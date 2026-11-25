@@ -1,0 +1,9 @@
+node_modules/
+web/dist/
+# chaves do Pluggy e seus dados financeiros: nunca publicar
+server/.env
+server/data/
+# pasta de trabalho local do verificador (cópias de base, harness)
+.verify-loop/
+# cache de ferramenta de design, se recria sozinho
+.impeccable/

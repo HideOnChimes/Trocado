@@ -1,0 +1,23 @@
+# Configuração do Fly.io. Troque `app` por um nome só seu (vira https://<nome>.fly.dev).
+app = "troque-este-nome"
+primary_region = "gru"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Desliga quando ninguém usa e liga sozinho no primeiro acesso: paga só o tempo ligado.
+  # Ao ligar, o servidor já sincroniza com os bancos.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[mounts]]
+  source = "dados"
+  destination = "/app/server/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

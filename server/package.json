@@ -1,0 +1,11 @@
+{
+  "name": "financas-server",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node --env-file=.env index.mjs"
+  },
+  "dependencies": {
+    "pluggy-sdk": "^0.93.0"
+  },
+  "private": true
+}

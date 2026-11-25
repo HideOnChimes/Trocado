@@ -1,0 +1,8 @@
+# Nada de segredo ou dado pessoal dentro da imagem.
+**/node_modules
+web/dist
+server/.env
+server/data
+.git
+.verify-loop
+.claude
