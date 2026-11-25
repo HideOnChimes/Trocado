@@ -22,7 +22,7 @@ export function Login({ onSubmit }: { onSubmit: (password: string) => Promise<vo
   return (
     <form className="login" onSubmit={submit}>
       <Mascote mood={error ? 'bravo' : 'neutro'} size={128} />
-      <h1>Tostão</h1>
+      <h1>Trocado</h1>
       <p className="muted">Seu dinheiro, sem lançamento manual.</p>
       <input className="input" type="password" autoComplete="current-password" placeholder="Senha" aria-label="Senha" value={password} onChange={(e) => setPassword(e.target.value)} required />
       {error ? <p className="red small" role="alert">{error}</p> : null}

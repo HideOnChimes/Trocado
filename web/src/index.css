@@ -143,7 +143,6 @@ a { color: var(--text); }
    Tostão gira uma moedinha no ar e o brilho passa nos óculos, Alucard paira com a capa balançando e espia de lado, Warren Bufê respira devagar e mexe o bigode.
    O humor troca o ritmo; o toque dispara o gesto de cada um. */
 .talk { display: flex; align-items: center; gap: 14px; }
-.cast { grid-template-columns: repeat(4, minmax(0, 1fr)); justify-items: center; text-align: center; margin-top: 12px; }
 .bubble.side { display: block; max-width: none; margin: 0 0 8px; text-align: left; animation: none; }
 .bubble.side::after { left: -5px; top: 50%; margin: -6px 0 0; }
 

@@ -9,8 +9,8 @@ import type { Mood } from './engine.ts';
 
 export type Character = 'tostao' | 'alucard' | 'warren';
 
-/** Nome de cada personagem, para a tela e para o leitor de tela. */
-export const NAMES: Record<Character, string> = { tostao: 'Tostão', alucard: 'Alucard', warren: 'Warren Bufê' };
+/** Nome de cada personagem, para o leitor de tela. */
+const NAMES: Record<Character, string> = { tostao: 'Tostão', alucard: 'Alucard', warren: 'Warren Bufê' };
 
 const INK = '#16181d';
 const YELLOW = '#ffc21a';
@@ -112,7 +112,7 @@ function glare(x: number) {
 
 /** Heptágono: moeda facetada vista de lado, de óculos escuros com a haste reta e o gancho da orelha, um braço solto e o outro girando uma moedinha no ar. Os óculos escondem os olhos; o humor vai na boca. */
 function Tostao({ mood }: { mood: Mood }) {
-  // Um recorte por lente, com id próprio: a vitrine mostra vários Tostões na mesma página.
+  // Um recorte por lente; id próprio para não colidir com outro desenho na mesma página.
   const id = useId();
   return (
     <g transform="translate(0 5)">

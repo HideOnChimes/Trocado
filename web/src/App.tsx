@@ -7,7 +7,6 @@ import { Orcamento } from './pages/Orcamento.tsx';
 import { Painel } from './pages/Painel.tsx';
 import { Recorrentes } from './pages/Recorrentes.tsx';
 import { Transacoes } from './pages/Transacoes.tsx';
-import { Vitrine } from './pages/Vitrine.tsx';
 import { StoreProvider, useStore } from './store.tsx';
 
 // Telas com `icon` (traço SVG 24x24) aparecem na barra inferior; as outras abrem pela tela Mais.
@@ -20,7 +19,6 @@ const PAGES = [
   { key: 'recorrentes', label: 'Fixos e parcelas', Page: Recorrentes },
   { key: 'metas', label: 'Metas', Page: Metas },
   { key: 'contas', label: 'Contas e ajustes', Page: Contas },
-  { key: 'vitrine', label: 'Personagens', Page: Vitrine },
 ] as const;
 
 type PageKey = (typeof PAGES)[number]['key'];
@@ -40,8 +38,8 @@ function Shell() {
   const current = PAGES.find((p) => p.key === page)!;
   const { Page } = current;
   const inTab = 'icon' in current;
-  // Sem banco conectado só fazem sentido as telas que levam a conectar um (e a vitrine, que não usa dados).
-  const blocked = data.items.length === 0 && !['contas', 'mais', 'vitrine'].includes(page);
+  // Sem banco conectado só fazem sentido as telas que levam a conectar um.
+  const blocked = data.items.length === 0 && !['contas', 'mais'].includes(page);
 
   return (
     <div className="shell">

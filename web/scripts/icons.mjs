@@ -1,6 +1,7 @@
-// Gera os ícones PNG do app (Tostão, a moeda amarela, sobre fundo escuro) sem dependência externa.
+// Gera os ícones PNG do app (óculos e sorriso do Tostão, amarelos sobre preto) sem dependência externa.
 // Uso: node web/scripts/icons.mjs   (rode de novo só se mudar o desenho)
-// shortcut: o ícone ainda é o Tostão redondo de olhos; o do app virou octógono de óculos. Refazer aqui quando o desenho fechar.
+// O favicon.svg tem o mesmo desenho escrito à mão: mudou aqui, mude lá.
+import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -8,24 +9,65 @@ import { fileURLToPath } from 'node:url';
 
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const BG = [22, 24, 29];
-const INK = [22, 24, 29];
 const YELLOW = [255, 194, 26];
-const RING = [232, 169, 0];
+const CENTER = [51, 62]; // ponto do desenho que vai para o meio do ícone
+const SCALE = 0.94;
+const SAFE_RADIUS = 48; // 40% de 120: fora desse círculo o sistema pode recortar o ícone (maskable)
 
-// Retângulo arredondado: [x, y, largura, altura, raio, cor]. Círculo = raio igual à metade do lado. Pintados em ordem.
+const CURVE_STEPS = 12; // retas por curva
+
+/** Curva quadrática em pontos, como o `q` do SVG. */
+function curve([x0, y0], [cx, cy], [x1, y1]) {
+  return Array.from({ length: CURVE_STEPS + 1 }, (_, i) => {
+    const t = i / CURVE_STEPS;
+    const a = (1 - t) ** 2;
+    const b = 2 * t * (1 - t);
+    return [a * x0 + b * cx + t * t * x1, a * y0 + b * cy + t * t * y1];
+  });
+}
+
+// Medidas dos óculos e da boca de web/src/Mascote.tsx (viewBox 0..120).
+// Cada forma: pontos ligados por um traço de pontas redondas; `fill` fecha a forma e pinta o miolo.
 const SHAPES = [
-  [16, 14, 88, 88, 44, YELLOW], // moeda
-  [24.5, 22.5, 71, 71, 35.5, RING], // friso
-  [27.5, 25.5, 65, 65, 32.5, YELLOW],
-  [42.5, 49, 9, 14, 4.5, INK], // olhos
-  [68.5, 49, 9, 14, 4.5, INK],
+  { pts: [[40, 51], ...curve([8, 51], [3, 51], [3, 58])], width: 3 }, // haste com o gancho da orelha
+  { pts: [[38, 49], [66, 49], [63, 63], [42, 63]], width: 3, fill: true }, // lentes
+  { pts: [[70, 49], [98, 49], [94, 63], [73, 63]], width: 3, fill: true },
+  { pts: [[64, 51.5], [73, 51.5]], width: 3 }, // ponte
+  { pts: curve([61, 77], [68, 82], [74, 75]), width: 3.5 }, // sorriso
 ];
 
-function inside(px, py, [x, y, w, h, r]) {
-  const dx = Math.max(Math.abs(px - (x + w / 2)) - (w / 2 - r), 0);
-  const dy = Math.max(Math.abs(py - (y + h / 2)) - (h / 2 - r), 0);
-  return dx * dx + dy * dy <= r * r;
+for (const { pts, width } of SHAPES) {
+  for (const [x, y] of pts) {
+    assert(SCALE * (Math.hypot(x - CENTER[0], y - CENTER[1]) + width / 2) <= SAFE_RADIUS, `ponto ${x},${y} fora da zona segura`);
+  }
 }
+
+// Lados de cada forma como pares de pontos, calculados uma vez; a fechada ganha o lado do último ponto de volta ao primeiro.
+for (const shape of SHAPES) {
+  const closed = shape.pts.map((a, i) => [a, shape.pts[(i + 1) % shape.pts.length]]);
+  shape.sides = shape.fill ? closed : closed.slice(0, -1);
+}
+
+/** O ponto está a meio traço de algum lado? */
+function onStroke(px, py, { sides, width }) {
+  return sides.some(([[ax, ay], [bx, by]]) => {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(px - ax - t * dx, py - ay - t * dy) <= width / 2;
+  });
+}
+
+/** Regra par-ímpar: o ponto está dentro se uma linha dele para a direita cruza um número ímpar de lados. */
+function inFill(px, py, { sides }) {
+  let crossings = 0;
+  for (const [[ax, ay], [bx, by]] of sides) {
+    if (ay > py !== by > py && px < ax + ((py - ay) / (by - ay)) * (bx - ax)) crossings++;
+  }
+  return crossings % 2 === 1;
+}
+
+const inside = (px, py, shape) => onStroke(px, py, shape) || (shape.fill && inFill(px, py, shape));
 
 function chunk(type, data) {
   const body = Buffer.concat([Buffer.from(type), data]);
@@ -38,7 +80,6 @@ function chunk(type, data) {
 
 function png(size) {
   const SS = 4; // amostras por eixo, para suavizar as bordas
-  const scale = 0.62; // mascote ocupa 62% do ícone: sobra margem para o recorte do sistema (maskable)
   const raw = Buffer.alloc(size * (size * 3 + 1));
   for (let y = 0; y < size; y++) {
     const row = y * (size * 3 + 1);
@@ -46,11 +87,10 @@ function png(size) {
       const acc = [0, 0, 0];
       for (let sy = 0; sy < SS; sy++) {
         for (let sx = 0; sx < SS; sx++) {
-          // pixel -> coordenada do desenho (0..120), centralizado
-          const u = (((x + (sx + 0.5) / SS) / size - 0.5) / scale + 0.5) * 120;
-          const v = (((y + (sy + 0.5) / SS) / size - 0.5) / scale + 0.5) * 120 + 4;
-          let color = BG;
-          for (const s of SHAPES) if (inside(u, v, s)) color = s[5];
+          // pixel -> coordenada do desenho
+          const u = (((x + (sx + 0.5) / SS) / size - 0.5) * 120) / SCALE + CENTER[0];
+          const v = (((y + (sy + 0.5) / SS) / size - 0.5) * 120) / SCALE + CENTER[1];
+          const color = SHAPES.some((s) => inside(u, v, s)) ? YELLOW : BG;
           for (let c = 0; c < 3; c++) acc[c] += color[c];
         }
       }

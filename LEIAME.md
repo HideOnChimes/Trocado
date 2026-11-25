@@ -1,4 +1,4 @@
-# Tostão
+# Trocado
 
 App de controle financeiro para o telefone, feito para gastar menos e investir mais. Os dados vêm dos
 seus bancos pelo Open Finance (via Pluggy): nada de lançamento manual. É um site que se instala na
@@ -74,7 +74,6 @@ servidor liga (o Meu Pluggy renova os dados uma vez por dia). O histórico fica 
 | **Mais > Fixos e parcelas** | Alucard vigia fatura e juros. Assinaturas e contas detectadas sozinhas, aumento de preço, parcelas. |
 | **Mais > Metas** | Reserva de emergência em meses e metas com valor e prazo. |
 | **Mais > Contas e ajustes** | Bancos conectados, meta de investimento, regras, sair. |
-| **Mais > Personagens** | Vitrine: os três personagens em todos os humores. |
 
 ## Como as contas são feitas
 

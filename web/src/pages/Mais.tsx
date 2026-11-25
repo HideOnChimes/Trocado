@@ -5,7 +5,6 @@ const LINKS = [
   { key: 'recorrentes', title: 'Fixos e parcelas', hint: 'Assinaturas, contas do mês e parcelas em aberto' },
   { key: 'metas', title: 'Metas', hint: 'Reserva de emergência e objetivos' },
   { key: 'contas', title: 'Contas e ajustes', hint: 'Bancos conectados, meta de investimento, regras' },
-  { key: 'vitrine', title: 'Personagens', hint: 'Tostão, Alucard e Warren Bufê em todos os humores' },
 ];
 
 /** Telas que não cabem na barra inferior. */

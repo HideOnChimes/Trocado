@@ -1,5 +1,5 @@
 {
-  "name": "financas",
+  "name": "trocado",
   "private": true,
   "scripts": {
     "build": "npm --prefix web run build",
