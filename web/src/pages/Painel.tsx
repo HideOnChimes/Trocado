@@ -150,7 +150,7 @@ export function Painel() {
               <Legend wrapperStyle={{ fontSize: 13 }} />
               <Line name="Plano do mês" dataKey="limite" stroke={chart.muted} strokeDasharray="5 5" dot={false} strokeWidth={1.5} />
               <Line name="Mês passado" dataKey="anterior" stroke={chart.axis} dot={false} strokeWidth={1.5} />
-              <Line name="Este mês" dataKey="atual" stroke={chart.accent} dot={false} strokeWidth={3} connectNulls={false} />
+              <Line name="Este mês" dataKey="atual" stroke={chart.blue} dot={false} strokeWidth={3} connectNulls={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -167,7 +167,7 @@ export function Painel() {
               <Legend wrapperStyle={{ fontSize: 13 }} />
               <Bar dataKey="Receitas" fill={chart.green} radius={[3, 3, 0, 0]} />
               <Bar dataKey="Gastos" fill={chart.red} radius={[3, 3, 0, 0]} />
-              <Bar dataKey="Investido" fill={chart.accent} radius={[3, 3, 0, 0]} />
+              <Bar dataKey="Investido" fill={chart.blue} radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

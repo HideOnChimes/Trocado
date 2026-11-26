@@ -13,7 +13,7 @@ export function Orcamento() {
   const rest = Math.max(0, income - essential - lifestyle - investedAvg);
   const share = (v: number) => (income > 0 ? (v / income) * 100 : 0);
   const split = [
-    { label: 'Essenciais', value: essential, target: 50, color: 'var(--accent)' },
+    { label: 'Essenciais', value: essential, target: 50, color: 'var(--blue)' },
     { label: 'Estilo de vida', value: lifestyle, target: 30, color: 'var(--amber)' },
     { label: 'Investido', value: investedAvg, target: 20, color: 'var(--green)' },
     { label: 'Sobra sem destino', value: rest, target: 0, color: 'var(--muted)' },

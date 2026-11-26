@@ -2,17 +2,17 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { brl } from './format.ts';
 
 export const chart = {
-  grid: '#e4e4e0',
-  axis: '#6c7178',
-  green: '#0e9f61',
-  red: '#dc3d43',
-  amber: '#d98b00',
-  accent: '#3b6cff',
-  muted: '#b4b7bc',
-  cursor: 'rgba(22, 24, 29, 0.05)',
-  tooltip: { background: '#ffffff', border: '1px solid #e4e4e0', borderRadius: 12, color: '#16181d', fontSize: 13 },
+  grid: '#2e323a',
+  axis: '#9a9fa8',
+  green: '#2fca85',
+  red: '#ff6166',
+  amber: '#f0a92b',
+  blue: '#6f93ff',
+  muted: '#868b95',
+  cursor: 'rgba(255, 255, 255, 0.06)',
+  tooltip: { background: '#24272e', border: '1px solid #2e323a', borderRadius: 12, color: '#f1f0ea', fontSize: 13 },
 };
-export const palette = ['#3b6cff', '#0e9f61', '#d98b00', '#dc3d43', '#8b5cf6', '#0aa5b8', '#f0703a', '#6aa329'];
+export const palette = ['#6f93ff', '#2fca85', '#f0a92b', '#ff6166', '#a78bfa', '#2cc3d6', '#ff8a57', '#8cc63f'];
 
 /** Formata valor para tooltip e eixo dos gráficos. */
 export const money0 = (v: unknown) => brl(Number(v) || 0, { cents: false });

@@ -202,7 +202,8 @@ export function Mascote({ character = 'tostao', mood, size = 96 }: { character?:
   const [taps, setTaps] = useState(0);
   const { tap, Body } = CAST[character];
   return (
-    <button type="button" className="mascote-btn" aria-label={`${NAMES[character]}, humor ${mood}. Toque para ver a reação.`} onClick={() => setTaps((n) => n + 1)}>
+    // A folga faz o disco claro do fundo passar das partes pretas do desenho (braços, cartola, cartão, sombra).
+    <button type="button" className="mascote-btn" style={{ padding: Math.round(size * 0.1) }} aria-label={`${NAMES[character]}, humor ${mood}. Toque para ver a reação.`} onClick={() => setTaps((n) => n + 1)}>
       {/* A key muda a cada toque para a animação do gesto recomeçar do zero. */}
       <svg key={taps} className={`mascote c-${character} mood-${mood} ${taps ? tap : ''}`} viewBox="0 0 120 120" width={size} height={size} aria-hidden>
         <ellipse className="m-shadow" cx="60" cy="114" rx="26" ry="3.5" fill={INK} opacity="0.1" />
