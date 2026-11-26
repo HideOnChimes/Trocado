@@ -100,6 +100,7 @@ export function Metas() {
       <Card title="Suas metas">
         {data.goals.length === 0 ? <Empty>Nenhuma meta ainda. Dar nome, valor e data a um objetivo é o que faz o dinheiro chegar lá.</Empty> : null}
         {data.goals.map((g) => <GoalRow key={g.id} goal={g} />)}
+        {data.goals.length > 0 ? <p className="muted small" style={{ marginTop: 8 }}>O valor guardado é você quem informa: o banco não diz para qual meta o dinheiro foi.</p> : null}
         {data.goals.length > 1 ? <p className="muted small" style={{ marginTop: 8 }}>Dica: concentrar o aporte em uma meta por vez costuma render mais do que dividir entre várias.</p> : null}
 
         <div className="divider" />
