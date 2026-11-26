@@ -21,12 +21,16 @@ const PAGES = [
   { key: 'contas', label: 'Contas e ajustes', Page: Contas },
 ] as const;
 
+// Olho aberto e olho riscado do botão "esconder valores" (traço SVG 24x24, como os ícones das abas).
+const EYE = 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z';
+const EYE_OFF = `${EYE}M4 4l16 16`;
+
 type PageKey = (typeof PAGES)[number]['key'];
 
 const fromHash = (): PageKey => PAGES.find((p) => `#${p.key}` === location.hash)?.key ?? 'painel';
 
 function Shell() {
-  const { data, error, clearError } = useStore();
+  const { data, error, clearError, hidden, toggleHidden } = useStore();
   const [page, setPage] = useState(fromHash);
 
   useEffect(() => {
@@ -42,7 +46,7 @@ function Shell() {
   const blocked = data.items.length === 0 && !['contas', 'mais'].includes(page);
 
   return (
-    <div className="shell">
+    <div className={`shell ${hidden ? 'masked' : ''}`}>
       <main className="main">
         {data.demo ? (
           <div className="banner">
@@ -57,7 +61,14 @@ function Shell() {
         ) : null}
         <div className="head">
           <h1>{current.label}</h1>
-          {inTab ? null : <a className="btn sm" href="#mais">‹ Mais</a>}
+          <div className="row">
+            <button className="btn sm" aria-pressed={hidden} aria-label="Esconder valores" title={hidden ? 'Mostrar valores' : 'Esconder valores'} onClick={toggleHidden}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ display: 'block' }}>
+                <path d={hidden ? EYE_OFF : EYE} />
+              </svg>
+            </button>
+            {inTab ? null : <a className="btn sm" href="#mais">‹ Mais</a>}
+          </div>
         </div>
         {blocked ? (
           // Sem banco conectado não há o que calcular: melhor dizer isso do que mostrar uma tela de zeros.

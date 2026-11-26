@@ -51,32 +51,35 @@ export function Orcamento() {
         right={candidates.length && budgeted.length < 3 ? <button className="btn sm primary" onClick={suggest}>Sugerir {candidates.length} tetos</button> : undefined}
       >
         <p className="muted small" style={{ marginBottom: 10 }}>
-          Poucos tetos, só no que é escolha sua, um pouco abaixo da sua média: é o formato que mais reduz gasto. O risco na barra mostra onde você costuma estar nesta altura do mês.
+          Poucos tetos, só no que é escolha sua, um pouco abaixo da sua média: é o formato que mais reduz gasto. O risco na barra mostra onde você costuma estar nesta altura do mês. O que sobra ou estoura de um teto passa para o mês seguinte.
         </p>
         {a.categories.map((c) => {
-          const max = c.budget ?? Math.max(c.avg3, c.mtd);
-          const overBudget = c.budget != null && c.mtd > c.budget;
-          const willOver = c.budget != null && !overBudget && c.projected > c.budget;
+          const max = c.limit ?? Math.max(c.avg3, c.mtd);
+          const overBudget = c.limit != null && c.mtd > c.limit;
+          const willOver = c.limit != null && !overBudget && c.projected > c.limit;
           return (
             <div key={c.category} className="item">
               <div className="row between">
                 <strong>{c.category}</strong>
                 <span>
                   <strong>{brl(c.mtd, { cents: false })}</strong>{' '}
-                  <span className="muted small">{c.budget != null ? `de ${brl(c.budget, { cents: false })}` : `· média ${brl(c.avg3, { cents: false })}`}</span>
+                  <span className="muted small">{c.limit != null ? `de ${brl(c.limit, { cents: false })}` : `· média ${brl(c.avg3, { cents: false })}`}</span>
                 </span>
               </div>
               <div style={{ margin: '8px 0 4px' }}>
-                <Progress value={c.mtd} max={max} mark={max > 0 ? c.usualByNow / max : undefined} color={overBudget ? 'var(--amber)' : c.budget != null ? 'var(--green)' : 'var(--muted)'} />
+                <Progress value={c.mtd} max={max} mark={max > 0 ? c.usualByNow / max : undefined} color={overBudget ? 'var(--amber)' : c.limit != null ? 'var(--green)' : 'var(--muted)'} />
               </div>
               <div className="muted small">
-                {c.budget == null
+                {c.limit == null
                   ? `costuma estar em ${brl(c.usualByNow, { cents: false })} nesta data`
                   : overBudget
-                    ? `passou ${brl(c.mtd - c.budget, { cents: false })} do teto`
+                    ? `passou ${brl(c.mtd - c.limit, { cents: false })} do teto`
                     : willOver
-                      ? `restam ${brl(c.budget - c.mtd, { cents: false })} · no ritmo habitual fecha em ${brl(c.projected, { cents: false })}`
-                      : `restam ${brl(c.budget - c.mtd, { cents: false })}`}
+                      ? `restam ${brl(c.limit - c.mtd, { cents: false })} · no ritmo habitual fecha em ${brl(c.projected, { cents: false })}`
+                      : `restam ${brl(c.limit - c.mtd, { cents: false })}`}
+                {c.budget != null && c.carry !== 0
+                  ? ` · teto de ${brl(c.budget, { cents: false })} ${c.carry > 0 ? `mais ${brl(c.carry, { cents: false })} que sobraram` : `menos ${brl(-c.carry, { cents: false })} que estouraram`} no mês passado`
+                  : ''}
               </div>
               <div className="row between" style={{ marginTop: 8 }}>
                 <button className="btn sm" title="Trocar entre essencial e estilo de vida" onClick={() => run(api.setKind(c.category, c.kind === 'essencial' ? 'estilo' : 'essencial'))}>

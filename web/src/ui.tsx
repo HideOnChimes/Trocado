@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { brl } from './format.ts';
+import { brl, toNumber, valuesMasked } from './format.ts';
 
 export const chart = {
   grid: '#2e323a',
@@ -16,7 +16,7 @@ export const palette = ['#6f93ff', '#2fca85', '#f0a92b', '#ff6166', '#a78bfa', '
 
 /** Formata valor para tooltip e eixo dos gráficos. */
 export const money0 = (v: unknown) => brl(Number(v) || 0, { cents: false });
-export const compact = (v: number) => (Math.abs(v) >= 1e6 ? `${(v / 1e6).toFixed(1).replace('.', ',')} mi` : Math.abs(v) >= 1000 ? `${Math.round(v / 1000)} mil` : String(Math.round(v)));
+export const compact = (v: number) => (valuesMasked() ? '•••' : Math.abs(v) >= 1e6 ? `${(v / 1e6).toFixed(1).replace('.', ',')} mi` : Math.abs(v) >= 1000 ? `${Math.round(v / 1000)} mil` : String(Math.round(v)));
 
 export function Card({ title, children, right }: { title?: string; children: ReactNode; right?: ReactNode }) {
   return (
@@ -58,8 +58,8 @@ export function MoneyInput({ value, onCommit, placeholder, label }: { value: num
   const [text, setText] = useState(value ? String(value) : '');
   useEffect(() => setText(value ? String(value) : ''), [value]);
   const commit = () => {
-    const n = Number(text.replace(/\./g, '').replace(',', '.'));
-    const next = Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+    const n = toNumber(text);
+    const next = n > 0 ? Math.round(n * 100) / 100 : 0;
     if (next !== (value ?? 0)) onCommit(next);
   };
   return (

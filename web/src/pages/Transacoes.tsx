@@ -8,8 +8,10 @@ import { Empty } from '../ui.tsx';
 const NEW = '__nova__';
 
 export function Transacoes() {
-  const { data, a, run } = useStore();
-  const [month, setMonth] = useState(a.month);
+  const { data, run } = useStore();
+  // O extrato anda por mês do calendário, mesmo quando o mês do app começa em outro dia.
+  const thisMonth = monthOf(data.today);
+  const [month, setMonth] = useState(thisMonth);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('');
   // Lançamento aberto: mostra a troca de categoria e o botão de ignorar.
@@ -17,7 +19,7 @@ export function Transacoes() {
   // Depois de recategorizar à mão, oferece transformar em regra para as próximas.
   const [offer, setOffer] = useState<{ key: string; category: string } | null>(null);
 
-  const oldest = data.transactions.length ? monthOf(data.transactions[data.transactions.length - 1].date) : a.month;
+  const oldest = data.transactions.length ? monthOf(data.transactions[data.transactions.length - 1].date) : thisMonth;
   const accountLabel = useMemo(() => {
     const bank = new Map(data.items.map((i) => [i.id, i.bank]));
     return new Map(data.accounts.map((acc) => [acc.id, `${bank.get(acc.itemId) ?? ''} · ${acc.name}`]));
@@ -53,7 +55,7 @@ export function Transacoes() {
       <div className="card row wrap">
         <button className="btn" aria-label="Mês anterior" disabled={month <= oldest} onClick={() => setMonth(shiftMonth(month, -1))}>‹</button>
         <strong style={{ minWidth: 90, textAlign: 'center', textTransform: 'capitalize' }}>{monthLabel(month)}</strong>
-        <button className="btn" aria-label="Próximo mês" disabled={month >= a.month} onClick={() => setMonth(shiftMonth(month, 1))}>›</button>
+        <button className="btn" aria-label="Próximo mês" disabled={month >= thisMonth} onClick={() => setMonth(shiftMonth(month, 1))}>›</button>
         <input className="input grow" placeholder="Buscar descrição, categoria ou nota" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Buscar" />
         <select className="input" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filtrar por categoria">
           <option value="">Todas as categorias</option>

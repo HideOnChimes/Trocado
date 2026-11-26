@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { PluggyConnect } from 'react-pluggy-connect';
-import { brl, dateTime } from '../format.ts';
+import { brl, dateTime, shortDate, toNumber } from '../format.ts';
 import { api, useStore } from '../store.tsx';
-import type { Item } from '../types.ts';
+import type { Data, Item } from '../types.ts';
 import { Card, Empty, MoneyInput } from '../ui.tsx';
 
 const STATUS: Record<string, { label: string; tone: string }> = {
@@ -15,12 +15,46 @@ const STATUS: Record<string, { label: string; tone: string }> = {
   ERROR: { label: 'erro', tone: 'red' },
 };
 
+/** O servidor aceita até este dia: todo mês tem dia 28. */
+const MAX_START_DAY = 28;
+
+/** Baixa todos os lançamentos num CSV que o Excel em português abre direto: ponto e vírgula, vírgula decimal, acentos. */
+function exportCsv(data: Data) {
+  const accounts = new Map(data.accounts.map((acc) => [acc.id, acc]));
+  const banks = new Map(data.items.map((item) => [item.id, item.bank]));
+  // Texto que começa com = + - @ (ou tabulação e retorno de linha) viraria fórmula no Excel: o apóstrofo na frente desarma.
+  const cell = (text: string) => `"${(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text).replace(/"/g, '""')}"`;
+  const rows = data.transactions.map((t) => {
+    const acc = accounts.get(t.accountId);
+    return [
+      t.date,
+      cell(t.description),
+      cell(t.category),
+      t.amount.toFixed(2).replace('.', ','),
+      cell(acc?.name ?? ''),
+      cell((acc && banks.get(acc.itemId)) ?? ''),
+      t.instTotal ? `${t.instN} de ${t.instTotal}` : '',
+      t.ignored ? 'sim' : '',
+    ].join(';');
+  });
+  const csv = ['data;descrição;categoria;valor;conta;banco;parcela;ignorado', ...rows].join('\r\n');
+  // O marcador no começo (BOM) faz o Excel ler os acentos certo.
+  const url = URL.createObjectURL(new Blob(['﻿', csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `trocado-lancamentos-${data.today}.csv`;
+  link.click();
+  // Soltar o endereço na hora pode cortar o download em navegador mais lento.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function Contas() {
   const { data, a, busy, run, auth, logout } = useStore();
   const [token, setToken] = useState<string | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [pctText, setPctText] = useState(String(data.settings.savingsTargetPct));
   const [monthsText, setMonthsText] = useState(String(data.settings.emergencyMonths));
+  const [startText, setStartText] = useState(String(data.settings.monthStartDay));
 
   const connect = async () => {
     setConnectError(null);
@@ -123,6 +157,20 @@ export function Contas() {
             />
             <span>Referência comum: 6 meses com renda fixa (CLT), 12 com renda variável.</span>
           </label>
+          <label className="field">
+            Dia em que seu mês começa
+            <input
+              className="input num"
+              inputMode="numeric"
+              value={startText}
+              onChange={(e) => setStartText(e.target.value)}
+              onBlur={() => run(api.setSettings({ monthStartDay: toNumber(startText) || 1 })).then(() => setStartText(String(Math.min(MAX_START_DAY, Math.max(1, Math.round(toNumber(startText) || 1))))))}
+            />
+            <span>
+              1 = mês do calendário; até {MAX_START_DAY}. Com outro dia, "pode gastar", limites e fechamento contam desse dia até a véspera dele no mês seguinte.
+              {a.salary ? ` Seu salário costuma cair no dia ${a.salary.day}.` : ''} Hoje o mês do app vai de {shortDate(a.cycle.start)} a {shortDate(a.cycle.end)}.
+            </span>
+          </label>
         </div>
       </Card>
 
@@ -147,9 +195,10 @@ export function Contas() {
       <p className="muted small">
         Seus dados ficam só no servidor que você controla (arquivo server/data/financas.db). A senha do banco nunca passa pelo app: a autorização é feita no próprio banco.
       </p>
-      {auth ? (
-        <button className="btn danger" onClick={logout}>Sair de todos os aparelhos</button>
-      ) : null}
+      <div className="row wrap">
+        <button className="btn" onClick={() => exportCsv(data)}>Exportar lançamentos (CSV)</button>
+        {auth ? <button className="btn danger" onClick={logout}>Sair de todos os aparelhos</button> : null}
+      </div>
 
       {token ? (
         <PluggyConnect

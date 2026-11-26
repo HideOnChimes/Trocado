@@ -47,7 +47,7 @@ if (DEMO) {
   db = openDb(path.join(here, 'data', 'financas.db'));
 }
 
-const DEFAULT_SETTINGS = { savingsTargetPct: 20, monthlyIncome: null, emergencyMonths: 6 };
+const DEFAULT_SETTINGS = { savingsTargetPct: 20, monthlyIncome: null, emergencyMonths: 6, monthStartDay: 1 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 class HttpError extends Error {
@@ -140,6 +140,7 @@ function readData() {
     transactions,
     rules,
     budgets: Object.fromEntries(db.prepare('SELECT category, amount FROM budgets').all().map((b) => [b.category, b.amount])),
+    budgetSince: getKv(db, 'budgetSince', {}),
     categoryKinds: Object.fromEntries(db.prepare('SELECT category, kind FROM category_kinds').all().map((k) => [k.category, k.kind])),
     goals: db.prepare('SELECT id, name, target, saved, deadline, created_at AS createdAt FROM goals ORDER BY id').all(),
     dismissed: db.prepare('SELECT key FROM dismissed').all().map((d) => d.key),
@@ -269,8 +270,18 @@ const routes = [
   ['PUT', /^\/api\/budgets$/, (_m, body) => {
     const category = text(body.category, 'categoria', 40);
     const amount = money(body.amount, 'limite');
-    if (amount === 0) db.prepare('DELETE FROM budgets WHERE category = ?').run(category);
-    else db.prepare('INSERT INTO budgets (category, amount) VALUES (?, ?) ON CONFLICT(category) DO UPDATE SET amount = excluded.amount').run(category, amount);
+    tx(db, () => {
+      // Mês em que o limite nasceu: a sobra ou o estouro só passa para o mês seguinte se o limite já existia.
+      const since = getKv(db, 'budgetSince', {});
+      if (amount === 0) {
+        db.prepare('DELETE FROM budgets WHERE category = ?').run(category);
+        delete since[category];
+      } else {
+        db.prepare('INSERT INTO budgets (category, amount) VALUES (?, ?) ON CONFLICT(category) DO UPDATE SET amount = excluded.amount').run(category, amount);
+        since[category] ??= brDate().slice(0, 7);
+      }
+      setKv(db, 'budgetSince', since);
+    });
     return readData();
   }],
 
@@ -306,6 +317,8 @@ const routes = [
     if ('savingsTargetPct' in body) current.savingsTargetPct = Math.min(90, Math.max(0, Number(body.savingsTargetPct) || 0));
     if ('monthlyIncome' in body) current.monthlyIncome = body.monthlyIncome ? money(body.monthlyIncome, 'renda') : null;
     if ('emergencyMonths' in body) current.emergencyMonths = Math.min(24, Math.max(1, Math.round(Number(body.emergencyMonths) || 6)));
+    // Até 28: todo mês tem esse dia, então nenhum ciclo fica mais curto que os outros.
+    if ('monthStartDay' in body) current.monthStartDay = Math.min(28, Math.max(1, Math.round(Number(body.monthStartDay) || 1)));
     setKv(db, 'settings', current);
     return readData();
   }],

@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { fixedIncomeTax, futureValue, investMood, LONG_RUN_REAL, yearsToTarget } from '../engine.ts';
-import { brl, pct, shortDate } from '../format.ts';
+import { annualYield, fixedIncomeTax, futureValue, investMood, LONG_RUN_REAL, yearsToTarget } from '../engine.ts';
+import { brl, pct, shortDate, toNumber } from '../format.ts';
 import { MascoteFala } from '../Mascote.tsx';
 import { useStore } from '../store.tsx';
 import { Card, chart, compact, Empty, money0, palette, Progress, Stat } from '../ui.tsx';
 
 const TYPE: Record<string, string> = { FIXED_INCOME: 'Renda fixa', MUTUAL_FUND: 'Fundos', EQUITY: 'Ações', ETF: 'ETFs', SECURITY: 'Previdência', COE: 'COE', OTHER: 'Outros' };
 const FGC_LIMIT = 250_000;
-const num = (s: string) => Number(s.replace(',', '.')) || 0;
 const yearsText = (y: number | null) => (y == null ? 'não chega nesse ritmo' : y < 1 ? 'menos de 1 ano' : `${y.toFixed(1).replace('.', ',')} anos`);
 
 export function Investir() {
@@ -30,6 +29,10 @@ export function Investir() {
   for (const v of data.investments) byType.set(TYPE[v.type] ?? 'Outros', (byType.get(TYPE[v.type] ?? 'Outros') ?? 0) + v.balance);
   const allocation = [...byType.entries()].sort((x, y) => y[1] - x[1]);
   const profit = data.investments.reduce((s, v) => s + (v.profit ?? 0), 0);
+  const applied = data.investments.reduce((s, v) => s + (v.invested ?? 0), 0);
+  // Quanto cada investimento rende ao ano hoje e quanto disso fica acima da inflação.
+  const rates = { cdi, selic: market?.selic ?? cdi, ipca12: ipca };
+  const aboveInflation = (yearly: number) => ((1 + yearly / 100) / (1 + ipca / 100) - 1) * 100;
 
   // FGC cobre até R$ 250 mil por CPF e instituição. Tesouro não entra (garantia é do governo).
   const byIssuer = new Map<string, number>();
@@ -40,9 +43,9 @@ export function Investir() {
   const overFgc = [...byIssuer.entries()].filter(([, total]) => total > FGC_LIMIT);
 
   // ---------- simulador de aporte ----------
-  const m = num(monthly);
-  const y = Math.min(50, Math.max(1, Math.round(num(years))));
-  const rate = (cdi * num(cdiPct)) / 100;
+  const m = toNumber(monthly);
+  const y = Math.min(50, Math.max(1, Math.round(toNumber(years))));
+  const rate = (cdi * toNumber(cdiPct)) / 100;
   const series = Array.from({ length: y + 1 }, (_, i) => ({ ano: i, Aportado: Math.round(wealth.invested + m * 12 * i), Total: Math.round(futureValue(wealth.invested, m, rate, i)) }));
   const gross = futureValue(wealth.invested, m, rate, y);
   const contributed = wealth.invested + m * 12 * y;
@@ -55,7 +58,7 @@ export function Investir() {
   const fiTarget = yearsToTarget(wealth.invested, invest.target, LONG_RUN_REAL, wealth.fiNumber);
 
   // ---------- custo de um gasto ----------
-  const c = num(cut);
+  const c = toNumber(cut);
 
   return (
     <div className="stack">
@@ -83,19 +86,29 @@ export function Investir() {
                   <tr><th>Investimento</th><th>Tipo</th><th>Taxa</th><th>Vencimento</th><th className="right">Rendimento</th><th className="right">Saldo</th></tr>
                 </thead>
                 <tbody>
-                  {data.investments.map((v) => (
+                  {data.investments.map((v) => {
+                    const yearly = annualYield(v, rates);
+                    return (
                     <tr key={v.id}>
                       <td>{v.name}</td>
                       <td className="muted">{TYPE[v.type] ?? 'Outros'}</td>
-                      <td className="muted">{v.rate && v.rateType ? `${v.rate}% ${v.rateType}` : v.annualRate ? `${pct(v.annualRate, 1)} a.a.` : '—'}</td>
+                      <td className="muted">
+                        {v.rate && v.rateType ? `${v.rate}% ${v.rateType}` : v.annualRate ? `${pct(v.annualRate, 1)} a.a.` : '—'}
+                        {yearly != null ? <div className="small">hoje {pct(yearly, 1)} ao ano · {pct(aboveInflation(yearly), 1)} acima da inflação</div> : null}
+                      </td>
                       <td className="muted">{shortDate(v.dueDate)}</td>
                       <td className={`right ${v.profit != null && v.profit < 0 ? 'amber' : 'green'}`}>{v.profit != null ? brl(v.profit, { sign: true, cents: false }) : '—'}</td>
                       <td className="right" style={{ fontWeight: 600 }}>{brl(v.balance, { cents: false })}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
+            <p className="muted small" style={{ marginTop: 10 }}>
+              {applied > 0 ? `Rendimento acumulado: ${brl(profit, { cents: false, sign: true })}, ${pct((profit / applied) * 100, 1)} sobre os ${brl(applied, { cents: false })} aplicados. ` : ''}
+              "Hoje ao ano" é bruto, pela taxa contratada e pelas taxas do Banco Central (inflação de {pct(ipca, 1)} em 12 meses). Fundos, ações e ETFs não têm taxa contratada. Imposto e taxas pagos nos investimentos ainda não aparecem: o app não recebe essas movimentações.
+            </p>
             {overFgc.map(([issuer, total]) => (
               <p key={issuer} className="amber small" style={{ marginTop: 10 }}>
                 {issuer}: {brl(total, { cents: false })} em renda fixa. O FGC cobre até R$ 250 mil por instituição; o que passa disso fica sem garantia.

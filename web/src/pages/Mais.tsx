@@ -19,10 +19,11 @@ const AUTOMATIC = [
   'Assinaturas e contas fixas que se repetem há 3 meses ou mais, e aumento de preço',
   'Renda do mês, pelas entradas dos últimos meses (ou a que você fixar)',
   'Reserva de emergência, juros e tarifas pagos, taxas do Banco Central',
+  'Saldo previsto até o próximo salário e o que já está comprometido nos próximos meses',
 ];
 const MANUAL = [
   { key: 'contas', text: 'Conectar cada banco, e reconectar se ele pedir' },
-  { key: 'contas', text: 'Meta de investimento, meses de reserva e, se quiser, o valor da sua renda' },
+  { key: 'contas', text: 'Meta de investimento, meses de reserva e, se quiser, o valor da sua renda e o dia em que seu mês começa' },
   { key: 'orcamento', text: 'Tetos por categoria (o app sugere) e o que é essencial ou estilo de vida' },
   { key: 'metas', text: 'Metas: nome, valor, prazo e quanto já guardou' },
   { key: 'transacoes', text: 'Corrigir categoria errada, criar regra ou ignorar um lançamento. Aporte só conta se sair da conta como Investimentos' },

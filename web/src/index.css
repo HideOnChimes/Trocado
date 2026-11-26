@@ -93,6 +93,8 @@ a { color: var(--text); }
 .input, select.input { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 9px 12px; min-width: 0; }
 .input:focus, .btn:focus-visible, .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .input.num { width: 104px; text-align: right; }
+/* Modo "esconder valores": campo de número fica borrado até receber o foco para editar. */
+.masked .input.num:not(:focus) { filter: blur(5px); }
 .field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 
 .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }

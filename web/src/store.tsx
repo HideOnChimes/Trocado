@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { analyze, type Analysis } from './engine.ts';
+import { maskValues } from './format.ts';
 import { Login } from './Login.tsx';
 import type { Data, Kind, Market } from './types.ts';
 
@@ -63,9 +64,13 @@ type Store = {
   /** O servidor exige senha: mostra o botão Sair. */
   auth: boolean;
   logout: () => void;
+  /** Modo "esconder valores": todo valor em reais aparece como bolinhas. */
+  hidden: boolean;
+  toggleHidden: () => void;
 };
 
 const Ctx = createContext<Store | null>(null);
+const HIDDEN_KEY = 'trocado:esconder';
 
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -108,7 +113,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const a = useMemo(() => (data ? analyze(data) : null), [data]);
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem(HIDDEN_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleHidden = useCallback(() => setHidden((was) => !was), []);
+  // A escolha é do aparelho, não da conta: quem esconde no ônibus não quer escondido no PC de casa.
+  useEffect(() => {
+    try {
+      localStorage.setItem(HIDDEN_KEY, hidden ? '1' : '');
+    } catch {
+      // Sem armazenamento (aba anônima): vale só até fechar.
+    }
+  }, [hidden]);
+
+  // `analyze` escreve valores dentro de frases: o modo esconder precisa estar ligado antes, e a análise é refeita ao trocar.
+  const a = useMemo(() => {
+    maskValues(hidden);
+    return data ? analyze(data) : null;
+  }, [data, hidden]);
   const clearError = useCallback(() => setError(null), []);
 
   if (needLogin) {
@@ -130,7 +156,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       </div>
     );
   }
-  return <Ctx.Provider value={{ data, a, market, busy, error, run, clearError, auth, logout }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ data, a, market, busy, error, run, clearError, auth, logout, hidden, toggleHidden }}>{children}</Ctx.Provider>;
 }
 
 export function useStore(): Store {

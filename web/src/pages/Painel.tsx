@@ -1,13 +1,92 @@
 import { useState } from 'react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { mascotMood, type Mood } from '../engine.ts';
-import { brl, monthLabel, pct } from '../format.ts';
+import { closingLine, mascotMood, type Analysis, type Forecast, type Mood } from '../engine.ts';
+import { brl, monthLabel, pct, shortDate } from '../format.ts';
 import { Mascote } from '../Mascote.tsx';
 import { api, useStore } from '../store.tsx';
-import { Card, chart, compact, money0, Progress, Stat } from '../ui.tsx';
+import { Card, chart, compact, Empty, money0, Progress, Stat } from '../ui.tsx';
 
 /** Cor da barra de ritmo e do selo, pelo humor do Tostão. */
 const MOOD_COLOR: Record<Mood, string> = { feliz: 'var(--green)', neutro: 'var(--green)', preocupado: 'var(--amber)', bravo: 'var(--red)' };
+
+/** Saldo previsto da conta corrente até a véspera do salário: menor ponto, linha do caminho e as próximas contas. */
+function UntilPayday({ forecast }: { forecast: Forecast }) {
+  const { days, min, outflows, dailySpend } = forecast;
+  const short = min.balance < 0;
+  // Linha desenhada à mão em SVG: o Recharts só é montado dentro de "Mais números".
+  const top = Math.max(...days.map((p) => p.balance), 0);
+  const bottom = Math.min(min.balance, 0);
+  const y = (v: number) => 4 + (1 - (v - bottom) / (top - bottom || 1)) * 40;
+  const x = (i: number) => (i / (days.length - 1)) * 300;
+  return (
+    <>
+      <div className="row between" style={{ alignItems: 'baseline' }}>
+        <span className={`big ${short ? 'red' : ''}`} style={{ whiteSpace: 'nowrap' }}>{brl(min.balance, { cents: false })}</span>
+        <span className="muted small">{days.length > 1 ? `menor saldo no caminho, em ${shortDate(min.date)}` : `saldo de hoje; o salário está previsto para ${forecast.payday === days[0].date ? 'hoje' : 'amanhã'}`}</span>
+      </div>
+      {forecast.late ? <p className="amber small" style={{ marginTop: 6 }}>O salário deste mês ainda não apareceu. A conta abaixo vai até o próximo.</p> : null}
+      {days.length > 1 ? (
+        <svg viewBox="0 0 300 48" preserveAspectRatio="none" style={{ display: 'block', width: '100%', height: 48, margin: '10px 0' }} role="img" aria-label={`Saldo previsto de ${brl(days[0].balance, { cents: false })} hoje a ${brl(days[days.length - 1].balance, { cents: false })} na véspera do salário`}>
+          <line x1="0" x2="300" y1={y(0)} y2={y(0)} style={{ stroke: 'var(--border)' }} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          <polyline points={days.map((p, i) => `${x(i)},${y(p.balance)}`).join(' ')} fill="none" style={{ stroke: short ? 'var(--red)' : 'var(--blue)' }} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+      ) : null}
+      {outflows.slice(0, 4).map((o, i) => (
+        // A mesma conta pode aparecer duas vezes no mesmo dia (a atrasada e a do mês seguinte): o índice desempata.
+        <div key={`${o.date}:${o.name}:${i}`} className="row between line">
+          <div>
+            <div>{o.name}</div>
+            <div className="muted small">{shortDate(o.date)}</div>
+          </div>
+          <span>{brl(-o.amount, { cents: false })}</span>
+        </div>
+      ))}
+      {outflows.length > 4 ? <div className="muted small line">e mais {outflows.length - 4} até o salário</div> : null}
+      <p className="muted small" style={{ marginTop: 10 }}>
+        Estimativa: saldo da conta corrente, menos as contas fixas que saem da conta, a fatura do cartão no vencimento e {brl(dailySpend, { cents: false })} por dia de gasto habitual. Entradas além do salário não entram na conta.
+      </p>
+    </>
+  );
+}
+
+/** Por quantos dias do mês novo o fechamento do anterior fica à vista no Início; depois vai para "Mais números". */
+const CLOSING_DAYS = 10;
+
+/** Como fechou o mês anterior: entrou, gastou, investiu, sobrou, e o que pesou. */
+function Closing({ closing }: { closing: NonNullable<Analysis['closing']> }) {
+  const { spendDiff, limits } = closing;
+  const figures = [
+    { label: 'Entrou', value: closing.income, hint: null },
+    { label: 'Gastou', value: closing.spend, hint: spendDiff != null ? `${brl(Math.abs(spendDiff), { cents: false })} ${spendDiff > 0 ? 'a mais' : 'a menos'} que no mês anterior` : null },
+    { label: 'Investiu', value: closing.invested, hint: closing.investTarget > 0 ? (closing.investHit ? 'meta batida' : `a meta era ${brl(closing.investTarget, { cents: false })}`) : null },
+    { label: 'Sobrou', value: closing.left, hint: null },
+  ];
+  return (
+    <Card title={`Como fechou ${monthLabel(closing.month)}`}>
+      <p style={{ marginBottom: 12 }}>{closingLine(closing)}</p>
+      <div className="grid g4">
+        {figures.map((f) => (
+          <div key={f.label}>
+            <div className="label">{f.label}</div>
+            <div className={`big ${f.value < 0 ? 'red' : ''}`}>{brl(f.value, { cents: false })}</div>
+            {f.hint ? <div className="muted small">{f.hint}</div> : null}
+          </div>
+        ))}
+      </div>
+      <div className="divider" />
+      {closing.top.map((c) => (
+        <div key={c.category} className="row between line">
+          <span>{c.category}</span>
+          <span>{brl(c.value, { cents: false })}</span>
+        </div>
+      ))}
+      <p className="muted small" style={{ marginTop: 10 }}>
+        {limits.total > 0 ? `${limits.kept} de ${limits.total} tetos cumpridos. ` : ''}
+        {closing.fees > 0 ? `${brl(closing.fees)} em juros e tarifas.` : 'Nenhum juro ou tarifa.'}
+      </p>
+    </Card>
+  );
+}
 
 export function Painel() {
   const { data, a, run } = useStore();
@@ -73,6 +152,12 @@ export function Painel() {
         </div>
       </Card>
 
+      {a.closing && a.day <= CLOSING_DAYS ? <Closing closing={a.closing} /> : null}
+
+      <Card title="Até o próximo salário" right={a.forecast ? <span className="muted small">{shortDate(a.forecast.payday)}</span> : undefined}>
+        {a.forecast ? <UntilPayday forecast={a.forecast} /> : <Empty>Ainda não achei o dia do seu salário. Preciso de 2 meses com uma entrada grande na conta, em dia parecido.</Empty>}
+      </Card>
+
       <Card title="Seu mês em 3 sinais">
         <div className="stack" style={{ gap: 12 }}>
           {a.health.map((h) => (
@@ -127,6 +212,7 @@ export function Painel() {
         <summary className="btn">Mais números</summary>
         {showMore ? (
           <div className="stack" style={{ marginTop: 12 }}>
+      {a.closing && a.day > CLOSING_DAYS ? <Closing closing={a.closing} /> : null}
       <div className="grid g4">
         <Stat
           label="Gasto livre até hoje"

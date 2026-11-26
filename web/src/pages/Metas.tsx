@@ -1,10 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { brl, monthOf, shortDate } from '../format.ts';
+import { brl, monthOf, shortDate, toNumber } from '../format.ts';
 import { api, useStore } from '../store.tsx';
 import type { Goal } from '../types.ts';
 import { Card, Empty, Progress } from '../ui.tsx';
-
-const toNumber = (s: string) => Number(s.replace(/\./g, '').replace(',', '.')) || 0;
 
 function monthsUntil(from: string, deadline: string): number {
   const [fy, fm] = monthOf(from).split('-').map(Number);
@@ -107,7 +105,7 @@ export function Metas() {
         <form className="row wrap" onSubmit={create} style={{ alignItems: 'flex-end' }}>
           <label className="field grow">Nome<input className="input" value={name} onChange={(ev) => setName(ev.target.value)} placeholder="Ex.: Entrada do apartamento" maxLength={60} required /></label>
           <label className="field">Valor alvo (R$)<input className="input num" inputMode="decimal" value={target} onChange={(ev) => setTarget(ev.target.value)} required /></label>
-          <label className="field">Até quando<input className="input" type="month" value={deadline} min={a.month} onChange={(ev) => setDeadline(ev.target.value)} /></label>
+          <label className="field">Até quando<input className="input" type="month" value={deadline} min={monthOf(data.today)} onChange={(ev) => setDeadline(ev.target.value)} /></label>
           <button className="btn primary" type="submit">Criar meta</button>
         </form>
       </Card>

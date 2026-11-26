@@ -55,7 +55,13 @@ export type Tx = {
 export type Goal = { id: number; name: string; target: number; saved: number; deadline: string | null; createdAt: string };
 export type Rule = { id: number; pattern: string; category: string };
 export type Snapshot = { date: string; cash: number; cardDebt: number; invested: number };
-export type Settings = { savingsTargetPct: number; monthlyIncome: number | null; emergencyMonths: number };
+export type Settings = {
+  savingsTargetPct: number;
+  monthlyIncome: number | null;
+  emergencyMonths: number;
+  /** Dia em que o mês do app começa (1 a 28). 1 = mês do calendário. */
+  monthStartDay: number;
+};
 export type Kind = 'essencial' | 'estilo';
 
 export type Data = {
@@ -69,6 +75,8 @@ export type Data = {
   transactions: Tx[];
   rules: Rule[];
   budgets: Record<string, number>;
+  /** Mês (AAAA-MM) em que cada limite foi criado. */
+  budgetSince: Record<string, string>;
   categoryKinds: Record<string, Kind>;
   goals: Goal[];
   dismissed: string[];

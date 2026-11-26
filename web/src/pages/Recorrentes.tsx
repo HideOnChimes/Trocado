@@ -1,9 +1,88 @@
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { cardMood, futureValue, LONG_RUN_REAL } from '../engine.ts';
-import { brl, monthLabel } from '../format.ts';
+import { useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { cardMood, futureValue, LONG_RUN_REAL, simulatePurchase, type Verdict } from '../engine.ts';
+import { brl, monthLabel, pct, toNumber } from '../format.ts';
 import { MascoteFala } from '../Mascote.tsx';
 import { api, useStore } from '../store.tsx';
 import { Card, chart, compact, Empty, money0, Stat } from '../ui.tsx';
+
+const VERDICT: Record<Verdict, { tone: string; label: string }> = {
+  cabe: { tone: 'green', label: 'cabe' },
+  aperta: { tone: 'amber', label: 'aperta' },
+  nao: { tone: 'red', label: 'não cabe' },
+};
+
+/** "Posso comprar?": compara pagar à vista com parcelar, pelo efeito no mês e no que já está comprometido. */
+function CanIBuy() {
+  const { a, market } = useStore();
+  const [price, setPrice] = useState('');
+  const [times, setTimes] = useState('10');
+  const [rate, setRate] = useState('0');
+  const sim = simulatePurchase(a, toNumber(price), toNumber(times), toNumber(rate));
+
+  return (
+    <Card title="Posso comprar?">
+      <div className="row wrap" style={{ alignItems: 'flex-end' }}>
+        <label className="field">Valor (R$)<input className="input num" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" /></label>
+        <label className="field">Parcelas<input className="input num" inputMode="numeric" value={times} onChange={(e) => setTimes(e.target.value)} /></label>
+        <label className="field">Juros ao mês (%)<input className="input num" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} /></label>
+      </div>
+      <p className="muted small" style={{ marginTop: 8 }}>
+        Parcelas 1 = só à vista. Juros 0 = sem juros.{market ? ` Parcelado com juros no cartão hoje: ${pct(market.parceladoMes, 1)} ao mês em média (Banco Central).` : ''}
+      </p>
+      {a.free.expectedIncome <= 0 ? (
+        <Empty>Ainda não conheço sua renda. Com alguns dias de extrato eu consigo responder.</Empty>
+      ) : sim == null ? null : (
+        <>
+          <div className="grid g2" style={{ marginTop: 14 }}>
+            <div>
+              <div className="row between">
+                <strong>À vista</strong>
+                <span className={`badge ${VERDICT[sim.cash.verdict].tone}`}>{VERDICT[sim.cash.verdict].label}</span>
+              </div>
+              <div className="muted small">Sai da conta agora.</div>
+              <div className="row between line" style={{ marginTop: 8 }}>
+                <span>Pode gastar no mês</span>
+                <span>{brl(a.free.left, { cents: false })} vira <strong className={sim.cash.leftAfter < 0 ? 'red' : ''}>{brl(sim.cash.leftAfter, { cents: false })}</strong></span>
+              </div>
+              {sim.cash.minAfter != null ? (
+                <div className="row between line">
+                  <span>Menor saldo até o salário</span>
+                  <strong className={sim.cash.minAfter < 0 ? 'red' : ''}>{brl(sim.cash.minAfter, { cents: false })}</strong>
+                </div>
+              ) : null}
+            </div>
+            {sim.installments > 1 ? (
+              <div>
+                <div className="row between">
+                  <strong>Em {sim.installments}x de {brl(sim.installment)}</strong>
+                  <span className={`badge ${VERDICT[sim.plan.verdict].tone}`}>{VERDICT[sim.plan.verdict].label}</span>
+                </div>
+                <div className="muted small">No cartão, até {monthLabel(sim.plan.endMonth)}.</div>
+                <div className="row between line" style={{ marginTop: 8 }}>
+                  <span>Total pago</span>
+                  <span><strong>{brl(sim.total, { cents: false })}</strong>{sim.interest >= 1 ? <span className="amber"> · {brl(sim.interest, { cents: false })} de juros</span> : null}</span>
+                </div>
+                <div className="row between line">
+                  <span>Comprometido por mês</span>
+                  <strong>{pct(sim.plan.shareAfter * 100)} da renda</strong>
+                </div>
+                <div className="row between line">
+                  <span>Sobra para o dia a dia</span>
+                  <span><strong className={sim.plan.tightest < 0 ? 'red' : ''}>{brl(sim.plan.tightest, { cents: false })}</strong> <span className="muted small">· você costuma gastar {brl(sim.plan.usual, { cents: false })}</span></span>
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <p className="muted small" style={{ marginTop: 12 }}>
+            Investido, esse valor viraria {brl(sim.tenYears, { cents: false })} em 10 anos, em dinheiro de hoje.
+            {sim.goalMonths != null ? ` É o mesmo que ${sim.goalMonths.toFixed(1).replace('.', ',')} ${sim.goalMonths.toFixed(1) === '1.0' ? 'mês' : 'meses'} da sua meta de investimento.` : ''}
+          </p>
+        </>
+      )}
+    </Card>
+  );
+}
 
 export function Recorrentes() {
   const { data, a, run } = useStore();
@@ -20,7 +99,8 @@ export function Recorrentes() {
   const monthlyFixed = sum(a.recurring.map((r) => r.amount)) + sum(a.plans.map((p) => p.amount));
   const openPlans = sum(a.plans.map((p) => p.remainingTotal));
   const card = cardMood(a, data.accounts);
-  const schedule = a.planSchedule.map((s) => ({ mes: monthLabel(s.month, true), Parcelas: Math.round(s.total) }));
+  const schedule = a.commitments.map((c) => ({ mes: monthLabel(c.month, true), Fixos: Math.round(c.fixed), Parcelas: Math.round(c.installments) }));
+  const heaviest = a.commitments.reduce((top, c) => (c.total > top.total ? c : top));
 
   return (
     <div className="stack">
@@ -34,6 +114,8 @@ export function Recorrentes() {
         <Stat label="Ainda a pagar em parcelas" value={brl(openPlans, { cents: false })} hint={`${a.plans.length} compras parceladas`} />
         <Stat label="Falta pagar neste mês" value={brl(a.free.fixedPending, { cents: false })} hint="Fixos e parcelas que ainda não caíram" />
       </div>
+
+      <CanIBuy />
 
       <Card title="Assinaturas" right={<span className={`badge ${pending.length ? 'amber' : 'green'}`}>{pending.length ? `${pending.length} para revisar neste trimestre` : 'revisão do trimestre feita'}</span>}>
         {subs.length === 0 ? <Empty>Nenhuma cobrança fixa mensal no cartão foi detectada ainda. O app precisa de 3 meses de histórico.</Empty> : (
@@ -125,21 +207,29 @@ export function Recorrentes() {
           )}
         </Card>
 
-        <Card title="Parcelas já contratadas nos próximos meses">
-          {schedule.length === 0 ? <Empty>Nada comprometido.</Empty> : (
-            <div style={{ height: 200 }}>
-              <ResponsiveContainer>
-                <BarChart data={schedule} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
-                  <CartesianGrid stroke={chart.grid} vertical={false} />
-                  <XAxis dataKey="mes" stroke={chart.axis} tickLine={false} fontSize={12} />
-                  <YAxis stroke={chart.axis} tickLine={false} axisLine={false} fontSize={12} width={44} tickFormatter={compact} />
-                  <Tooltip contentStyle={chart.tooltip} formatter={money0} cursor={{ fill: chart.cursor }} />
-                  <Bar dataKey="Parcelas" fill={chart.amber} radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+        <Card title="Comprometido nos próximos meses">
+          {heaviest.total <= 0 ? <Empty>Nada comprometido: o app ainda não achou conta fixa nem parcela em aberto.</Empty> : (
+            <>
+              <p style={{ marginBottom: 10 }}>
+                Mês mais pesado: <strong style={{ textTransform: 'capitalize' }}>{monthLabel(heaviest.month)}</strong>, com {brl(heaviest.total, { cents: false })} já comprometidos
+                {a.free.expectedIncome > 0 ? ` (${Math.round(heaviest.share * 100)}% da renda)` : ''}, antes de qualquer gasto novo.
+              </p>
+              <div style={{ height: 200 }}>
+                <ResponsiveContainer>
+                  <BarChart data={schedule} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
+                    <CartesianGrid stroke={chart.grid} vertical={false} />
+                    <XAxis dataKey="mes" stroke={chart.axis} tickLine={false} fontSize={12} />
+                    <YAxis stroke={chart.axis} tickLine={false} axisLine={false} fontSize={12} width={44} tickFormatter={compact} />
+                    <Tooltip contentStyle={chart.tooltip} formatter={money0} cursor={{ fill: chart.cursor }} />
+                    <Legend wrapperStyle={{ fontSize: 13 }} />
+                    <Bar dataKey="Fixos" stackId="mes" fill={chart.blue} />
+                    <Bar dataKey="Parcelas" stackId="mes" fill={chart.amber} radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </>
           )}
-          <p className="muted small" style={{ marginTop: 8 }}>Cada degrau que desce é dinheiro liberando. Bom momento para subir o aporte no mesmo valor.</p>
+          <p className="muted small" style={{ marginTop: 8 }}>Fixos supõem que as contas e assinaturas de hoje continuam. Cada degrau que desce é parcela acabando: bom momento para subir o aporte no mesmo valor.</p>
         </Card>
       </div>
     </div>
