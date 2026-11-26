@@ -71,6 +71,7 @@ servidor liga (o Meu Pluggy renova os dados uma vez por dia). O histórico fica 
 | **Extrato** | Busca, troca de categoria (toque no lançamento), regra "classificar sempre assim", ignorar. |
 | **Limites** | Divisão da renda (essencial / estilo de vida / investido) e tetos em poucas categorias. |
 | **Investir** | Warren Bufê cobra o aporte. Carteira, simulador com IR, independência financeira, taxas do Banco Central. |
+| **Mais** | Atalhos para as telas abaixo e a lista do que o app pega sozinho e do que depende de você. |
 | **Mais > Fixos e parcelas** | Alucard vigia fatura e juros. Assinaturas e contas detectadas sozinhas, aumento de preço, parcelas. |
 | **Mais > Metas** | Reserva de emergência em meses e metas com valor e prazo. |
 | **Mais > Contas e ajustes** | Bancos conectados, meta de investimento, regras, sair. |
